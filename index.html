@@ -56,7 +56,7 @@ html,body{margin:0;height:100%;background:#030712;color:#E9EAEE;font-family:syst
      redirect_link/url      -> "https://your-link"   (the page this app opens)
      redirect_link/enabled  -> true / false          (optional; false = show message instead of redirecting)
      redirect_link/message  -> "text"                (optional; shown when enabled is false)
-   (redirect_link can also be a plain string URL.)
+   (redirect_link can also be a plain string URL. Missing nodes are auto-created on first open.)
    Debug: open  /?stay=1  to see the link without redirecting. */
 const FB_CONFIG = {
   apiKey: "AIzaSyCfk9xXNIQiV1kgtpctiSkimPACOsi1_wE",
@@ -96,34 +96,49 @@ function go(url){
   setTimeout(() => location.replace(url), wait);
 }
 
+let ref = null, ensured = false;
+const DEFAULTS = { url: '', enabled: true, message: 'This app is temporarily unavailable.' };
+
+function ensureNodes(v){                               /* auto-create redirect_link/url, enabled, message in Firebase if missing (never overwrites) */
+  if (ensured || typeof v === 'string') return; ensured = true;
+  const o = (v && typeof v === 'object') ? v : {};
+  Object.keys(DEFAULTS).forEach(k => { if (o[k] === undefined || o[k] === null) ref.child(k).set(DEFAULTS[k]).catch(() => {}); });
+}
+
 function handle(val){
+  if (done) return;
+  ensureNodes(val);
   const o = (val && typeof val === 'object') ? val : { url: val };
-  if (o.enabled === false){ done = true; say(String(o.message || 'This app is temporarily unavailable.').replace(/</g,'&lt;'), true); $('actions').style.display = 'flex'; $('cachedBtn').style.display = 'none'; return; }
+  if (o.enabled === false){ say(String(o.message || DEFAULTS.message).replace(/</g,'&lt;'), true); $('actions').style.display = 'none'; return; }
   const u = safeUrl(o.url);
-  if (!u){ const c = cached(); say('No valid link set in Firebase at <code>' + DB_PATH + '/url</code>.', true); showActions(c); return; }
+  if (!u){ say('Link not set yet.<br>Firebase me <code>' + DB_PATH + '/url</code> me link daalo - app khud khul jayega.', true); showActions(cached()); return; }
   save(u); say('Opening...'); go(u);
 }
 
 function load(){
   done = false; started = Date.now(); $('actions').style.display = 'none'; say('Loading...');
-  let settled = false;
+  let first = true;
   const timer = setTimeout(() => {                      /* Firebase slow / offline -> use last known link */
-    if (settled) return; settled = true;
+    if (!first) return; first = false;
     const c = cached();
     if (c){ say('Offline - opening last link...'); go(c); }
     else { say('Cannot reach Firebase and no saved link yet.', true); showActions(null); }
   }, TIMEOUT);
   try{
     if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    firebase.database().ref(DB_PATH).once('value').then(s => {
-      if (settled) return; settled = true; clearTimeout(timer); handle(s.val());
-    }).catch(err => {
-      if (settled) return; settled = true; clearTimeout(timer);
+    if (ref) ref.off();
+    ref = firebase.database().ref(DB_PATH);
+    ref.on('value', s => {                              /* live: any change of the link in Firebase shows up at once */
+      if (first){ first = false; clearTimeout(timer); }
+      handle(s.val());
+    }, err => {
+      if (first){ first = false; clearTimeout(timer); }
+      if (done) return;
       const c = cached();
       if (c){ say('Firebase error - opening last link...'); go(c); }
       else { say('Firebase error: ' + String(err && err.message || err).replace(/</g,'&lt;'), true); showActions(null); }
     });
-  }catch(e){ settled = true; clearTimeout(timer); const c = cached(); if (c) go(c); else { say('Firebase failed to start.', true); showActions(null); } }
+  }catch(e){ first = false; clearTimeout(timer); const c = cached(); if (c) go(c); else { say('Firebase failed to start.', true); showActions(null); } }
 }
 
 $('retryBtn').onclick = load;
