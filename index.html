@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#030712">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ash Face Attendance</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#030712;color:#E9EAEE;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+#ashSplash{position:fixed;inset:0;background:#030712;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center}
+#ashSplash::before,#ashSplash::after{content:'';position:absolute;width:380px;height:380px;border-radius:50%;pointer-events:none}
+#ashSplash::before{top:10%;left:-130px;background:radial-gradient(circle,rgba(34,190,214,.26),transparent 65%);animation:ashOrb1 7s ease-in-out infinite alternate}
+#ashSplash::after{bottom:8%;right:-130px;background:radial-gradient(circle,rgba(250,225,90,.20),transparent 65%);animation:ashOrb2 7s ease-in-out infinite alternate}
+.ash-stage{position:relative;width:96px;height:96px;animation:ashFloat 3s .9s ease-in-out infinite}
+.ash-ring{position:absolute;inset:0;border-radius:24px;border:2px solid rgba(34,190,214,.6);opacity:0;animation:ashRing 2.2s .9s ease-out infinite}
+.ash-ring.r2{animation-delay:2s}
+.ash-logo{position:relative;display:block;width:96px;height:96px;border-radius:22px;object-fit:cover;filter:drop-shadow(0 10px 28px rgba(34,190,214,.45));animation:ashPop 1s cubic-bezier(.2,.9,.25,1.25) both}
+.ash-name{position:relative;font-weight:800;font-size:24px;background:linear-gradient(90deg,#E9EAEE 0%,#FAE15A 50%,#E9EAEE 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ashNameIn 1s .35s cubic-bezier(.2,.8,.2,1) both,ashShimmer 2.4s 1.4s linear infinite}
+.ash-bar{position:relative;width:130px;height:3px;border-radius:3px;background:#1D2230;overflow:hidden;animation:ashFadeUp .8s .6s both}
+.ash-bar i{display:block;height:100%;width:40%;background:linear-gradient(90deg,#22BED6,#FAE15A);border-radius:3px;animation:ashSlide 1s ease-in-out infinite}
+.ash-bar.stop i{animation:none;width:100%;background:#EF4444}
+#msg{position:relative;min-height:20px;font-size:14px;color:#94A3B8;max-width:320px;line-height:1.5}
+#msg code{color:#FAE15A}
+#actions{position:relative;display:none;gap:10px}
+#actions button{border:0;border-radius:12px;padding:11px 20px;font-weight:700;font-size:14px;cursor:pointer;color:#030712;background:linear-gradient(90deg,#22BED6,#FAE15A)}
+#actions button.alt{background:#1D2230;color:#E9EAEE}
+@keyframes ashPop{from{opacity:0;transform:scale(.4) rotate(-16deg)}to{opacity:1;transform:none}}
+@keyframes ashFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes ashRing{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+@keyframes ashSlide{from{transform:translateX(-110%)}to{transform:translateX(280%)}}
+@keyframes ashNameIn{from{opacity:0;letter-spacing:.4em;transform:translateY(10px)}to{opacity:1;letter-spacing:.02em;transform:none}}
+@keyframes ashShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes ashOrb1{to{transform:translate(130px,90px) scale(1.25)}}
+@keyframes ashOrb2{to{transform:translate(-130px,-80px) scale(1.2)}}
+@keyframes ashFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="ashSplash">
+  <div class="ash-stage"><i class="ash-ring"></i><i class="ash-ring r2"></i><img class="ash-logo" src="/icon-192.png" alt="ASH" width="96" height="96"></div>
+  <div class="ash-name">ASH FACE ATTENDANCE</div>
+  <div class="ash-bar" id="bar"><i></i></div>
+  <div id="msg">Loading...</div>
+  <div id="actions"><button id="retryBtn">Retry</button><button id="cachedBtn" class="alt" style="display:none">Open last link</button></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ===== Ash Face Attendance - Redirect v1 =====
+   Firebase Realtime Database path:  redirect_link
+     redirect_link/url      -> "https://your-link"   (the page this app opens)
+     redirect_link/enabled  -> true / false          (optional; false = show message instead of redirecting)
+     redirect_link/message  -> "text"                (optional; shown when enabled is false)
+   (redirect_link can also be a plain string URL.)
+   Debug: open  /?stay=1  to see the link without redirecting. */
+const FB_CONFIG = {
+  apiKey: "AIzaSyCfk9xXNIQiV1kgtpctiSkimPACOsi1_wE",
+  authDomain: "face-recognize-app-87da5.firebaseapp.com",
+  databaseURL: "https://face-recognize-app-87da5-default-rtdb.firebaseio.com",
+  projectId: "face-recognize-app-87da5",
+  storageBucket: "face-recognize-app-87da5.firebasestorage.app",
+  messagingSenderId: "921427546272",
+  appId: "1:921427546272:web:e70d18574a5cd0703ef9c5",
+  measurementId: "G-VNSJW0VZH5"
+};
+const DB_PATH = 'redirect_link', LS_KEY = 'ash_redirect_link_v1', MIN_SPLASH = 1400, TIMEOUT = 6000;
+const $ = id => document.getElementById(id);
+const stay = new URLSearchParams(location.search).has('stay');
+let started = Date.now(), done = false;
+
+function say(html, err){ $('msg').innerHTML = html; $('bar').classList.toggle('stop', !!err); }
+function showActions(cached){ $('actions').style.display = 'flex'; $('cachedBtn').style.display = cached ? '' : 'none'; $('cachedBtn').onclick = () => go(cached); }
+
+function safeUrl(u){                                   /* only http(s) or same-site relative paths */
+  if (typeof u !== 'string') return null;
+  u = u.trim(); if (!u) return null;
+  try{
+    const x = new URL(u, location.href);
+    if (!/^https?:$/.test(x.protocol)) return null;
+    if (x.origin === location.origin && x.pathname === location.pathname && !x.search && !x.hash) return null;   /* would loop */
+    return x.href;
+  }catch(e){ return null; }
+}
+function cached(){ try{ return safeUrl(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
+function save(u){ try{ localStorage.setItem(LS_KEY, u); }catch(e){} }
+
+function go(url){
+  if (done) return; done = true;
+  if (stay){ say('Link: <code>' + url.replace(/</g,'&lt;') + '</code><br>(stay mode)'); return; }
+  const wait = Math.max(0, MIN_SPLASH - (Date.now() - started));
+  setTimeout(() => location.replace(url), wait);
+}
+
+function handle(val){
+  const o = (val && typeof val === 'object') ? val : { url: val };
+  if (o.enabled === false){ done = true; say(String(o.message || 'This app is temporarily unavailable.').replace(/</g,'&lt;'), true); $('actions').style.display = 'flex'; $('cachedBtn').style.display = 'none'; return; }
+  const u = safeUrl(o.url);
+  if (!u){ const c = cached(); say('No valid link set in Firebase at <code>' + DB_PATH + '/url</code>.', true); showActions(c); return; }
+  save(u); say('Opening...'); go(u);
+}
+
+function load(){
+  done = false; started = Date.now(); $('actions').style.display = 'none'; say('Loading...');
+  let settled = false;
+  const timer = setTimeout(() => {                      /* Firebase slow / offline -> use last known link */
+    if (settled) return; settled = true;
+    const c = cached();
+    if (c){ say('Offline - opening last link...'); go(c); }
+    else { say('Cannot reach Firebase and no saved link yet.', true); showActions(null); }
+  }, TIMEOUT);
+  try{
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    firebase.database().ref(DB_PATH).once('value').then(s => {
+      if (settled) return; settled = true; clearTimeout(timer); handle(s.val());
+    }).catch(err => {
+      if (settled) return; settled = true; clearTimeout(timer);
+      const c = cached();
+      if (c){ say('Firebase error - opening last link...'); go(c); }
+      else { say('Firebase error: ' + String(err && err.message || err).replace(/</g,'&lt;'), true); showActions(null); }
+    });
+  }catch(e){ settled = true; clearTimeout(timer); const c = cached(); if (c) go(c); else { say('Firebase failed to start.', true); showActions(null); } }
+}
+
+$('retryBtn').onclick = load;
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+if (window.firebase) load(); else { const c = cached(); if (c) go(c); else { say('Firebase SDK not loaded (check internet).', true); showActions(null); } }
+</script>
+</body>
+</html>
