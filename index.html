@@ -54,6 +54,7 @@ html,body{margin:0;height:100%;background:#030712;color:#E9EAEE;font-family:syst
 /* ===== Ash Face Attendance - Redirect v1 =====
    Firebase Realtime Database path:  redirect_link
      redirect_link/url      -> "https://your-link"   (the page this app opens)
+     redirect_link/fallback -> "https://backup-link" (optional; opened if url is unreachable)
      redirect_link/enabled  -> true / false          (optional; false = show message instead of redirecting)
      redirect_link/message  -> "text"                (optional; shown when enabled is false)
    (redirect_link can also be a plain string URL. Missing nodes are auto-created on first open.)
@@ -97,7 +98,7 @@ function go(url){
 }
 
 let ref = null, ensured = false;
-const DEFAULTS = { url: '', enabled: true, message: 'This app is temporarily unavailable.' };
+const DEFAULTS = { url: '', fallback: '', enabled: true, message: 'This app is temporarily unavailable.' };
 
 function ensureNodes(v){                               /* auto-create redirect_link/url, enabled, message in Firebase if missing (never overwrites) */
   if (ensured || typeof v === 'string') return; ensured = true;
@@ -112,7 +113,13 @@ function handle(val){
   if (o.enabled === false){ say(String(o.message || DEFAULTS.message).replace(/</g,'&lt;'), true); $('actions').style.display = 'none'; return; }
   const u = safeUrl(o.url);
   if (!u){ say('Link not set yet.<br>Firebase me <code>' + DB_PATH + '/url</code> me link daalo - app khud khul jayega.', true); showActions(cached()); return; }
-  save(u); say('Opening...'); go(u);
+  save(u); say('Opening...');
+  const f = safeUrl(o.fallback);
+  if (!f || f === u){ go(u); return; }
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4500);   /* server unreachable -> fallback link */
+  fetch(u, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal })
+    .then(() => { clearTimeout(t); go(u); })
+    .catch(() => { clearTimeout(t); say('Main link down - opening fallback...'); go(f); });
 }
 
 function load(){
