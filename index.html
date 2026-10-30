@@ -11,18 +11,11 @@
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#030712;color:#E9EAEE;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
-#ashSplash{z-index:2;transition:opacity .5s;position:fixed;inset:0;background:#030712;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center}
-#ashSplash::before,#ashSplash::after{content:'';position:absolute;width:380px;height:380px;border-radius:50%;pointer-events:none}
-#ashSplash::before{top:10%;left:-130px;background:radial-gradient(circle,rgba(34,190,214,.26),transparent 65%);animation:ashOrb1 7s ease-in-out infinite alternate}
-#ashSplash::after{bottom:8%;right:-130px;background:radial-gradient(circle,rgba(250,225,90,.20),transparent 65%);animation:ashOrb2 7s ease-in-out infinite alternate}
-.ash-stage{position:relative;width:96px;height:96px;animation:ashFloat 3s .9s ease-in-out infinite}
-.ash-ring{position:absolute;inset:0;border-radius:24px;border:2px solid rgba(34,190,214,.6);opacity:0;animation:ashRing 2.2s .9s ease-out infinite}
-.ash-ring.r2{animation-delay:2s}
-.ash-logo{position:relative;display:block;width:96px;height:96px;border-radius:22px;object-fit:cover;filter:drop-shadow(0 10px 28px rgba(34,190,214,.45));animation:ashPop 1s cubic-bezier(.2,.9,.25,1.25) both}
-.ash-name{position:relative;font-weight:800;font-size:24px;background:linear-gradient(90deg,#E9EAEE 0%,#FAE15A 50%,#E9EAEE 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ashNameIn 1s .35s cubic-bezier(.2,.8,.2,1) both,ashShimmer 2.4s 1.4s linear infinite}
-.ash-bar{position:relative;width:130px;height:3px;border-radius:3px;background:#1D2230;overflow:hidden;animation:ashFadeUp .8s .6s both}
-.ash-bar i{display:block;height:100%;width:40%;background:linear-gradient(90deg,#22BED6,#FAE15A);border-radius:3px;animation:ashSlide 1s ease-in-out infinite}
-.ash-bar.stop i{animation:none;width:100%;background:#EF4444}
+#ashSplash{z-index:2;position:fixed;inset:0;background:#030712;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center}
+.ash-stage,.ash-name{display:none}
+.ash-bar{display:none;position:relative;width:130px;height:3px;border-radius:3px;background:#EF4444}
+.ash-bar.stop{display:block}
+.ash-bar i{display:none}
 #ashSplash.hide{opacity:0;pointer-events:none}
 #appFrame{position:fixed;inset:0;z-index:1;width:100%;height:100%;border:0;background:#030712}
 #msg{position:relative;min-height:20px;font-size:14px;color:#94A3B8;max-width:320px;line-height:1.5}
@@ -30,15 +23,6 @@ html,body{margin:0;height:100%;background:#030712;color:#E9EAEE;font-family:syst
 #actions{position:relative;display:none;gap:10px}
 #actions button{border:0;border-radius:12px;padding:11px 20px;font-weight:700;font-size:14px;cursor:pointer;color:#030712;background:linear-gradient(90deg,#22BED6,#FAE15A)}
 #actions button.alt{background:#1D2230;color:#E9EAEE}
-@keyframes ashPop{from{opacity:0;transform:scale(.4) rotate(-16deg)}to{opacity:1;transform:none}}
-@keyframes ashFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-@keyframes ashRing{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
-@keyframes ashSlide{from{transform:translateX(-110%)}to{transform:translateX(280%)}}
-@keyframes ashNameIn{from{opacity:0;letter-spacing:.4em;transform:translateY(10px)}to{opacity:1;letter-spacing:.02em;transform:none}}
-@keyframes ashShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
-@keyframes ashOrb1{to{transform:translate(130px,90px) scale(1.25)}}
-@keyframes ashOrb2{to{transform:translate(-130px,-80px) scale(1.2)}}
-@keyframes ashFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -71,12 +55,12 @@ const FB_CONFIG = {
   appId: "1:921427546272:web:e70d18574a5cd0703ef9c5",
   measurementId: "G-VNSJW0VZH5"
 };
-const DB_PATH = 'redirect_link', LS_KEY = 'ash_redirect_link_v1', MIN_SPLASH = 1400, TIMEOUT = 6000;
+const DB_PATH = 'redirect_link', LS_KEY = 'ash_redirect_link_v1', MIN_SPLASH = 0, TIMEOUT = 6000;
 const $ = id => document.getElementById(id);
 const stay = new URLSearchParams(location.search).has('stay');
 let started = Date.now(), done = false;
 
-function say(html, err){ $('msg').innerHTML = html; $('bar').classList.toggle('stop', !!err); }
+function say(html, err){ $('msg').innerHTML = html; $('msg').style.visibility = err ? 'visible' : 'hidden'; $('bar').classList.toggle('stop', !!err); }
 function showActions(cached){ $('actions').style.display = 'flex'; $('cachedBtn').style.display = cached ? '' : 'none'; $('cachedBtn').onclick = () => go(cached); }
 
 function safeUrl(u){                                   /* only http(s) or same-site relative paths */
