@@ -1,5 +1,5 @@
-/* Ash Face Attendance - Redirect v2 service worker: offline shell only. Firebase calls are never cached. */
-const VERSION = 'r3';
+/* Ash Face Attendance - Redirect v3 service worker: offline shell only. Firebase calls are never cached. */
+const VERSION = 'r4';
 const SHELL = `shell-${VERSION}`;
 const APP_SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
